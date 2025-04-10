@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="card">
+        <div class="card-header bg-success text-white">
+            <h2>Procesar pago del pedido #{{ pedido.id }}</h2>
+        </div>
+        <div class="card-body">
+            <h5>Mesa: {{ pedido.mesa }} - {{ pedido.ubicacion }}</h5>
+            <h5>Total a pagar: ${{ total_activo|floatformat:2 }}</h5>
+            
+            <h4 class="mt-4">Resumen del pedido:</h4>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Cantidad</th>
+                        <th>Producto</th>
+                        <th>Estado</th>
+                        <th>Precio unitario</th>
+                        <th>Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for detalle in items_activos %}
+                    <tr>
+                        <td>{{ detalle.cantidad }}x</td>
+                        <td>{{ detalle.producto.nombre }}</td>
+                        <td><span class="badge bg-success">Activo</span></td>
+                        <td>${{ detalle.precio_unitario|floatformat:2 }}</td>
+                        <td>${{ detalle.subtotal|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                    
+                    {% for detalle in pedido.detalles.all %}
+                        {% if detalle.estado == 'cancelado' %}
+                        <tr class="table-secondary text-muted">
+                            <td>{{ detalle.cantidad }}x</td>
+                            <td>{{ detalle.producto.nombre }}</td>
+                            <td><span class="badge bg-danger">Cancelado</span></td>
+                            <td>${{ detalle.precio_unitario|floatformat:2 }}</td>
+                            <td>$0.00</td>
+                        </tr>
+                        {% endif %}
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th colspan="4" class="text-end">Total:</th>
+                        <th>${{ total_activo|floatformat:2 }}</th>
+                    </tr>
+                </tfoot>
+            </table>
+            
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5>Método de pago</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'orders:completar_pago' pedido.id %}">
+                        {% csrf_token %}
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="radio" name="metodo_pago" id="efectivo" value="efectivo" checked>
+                            <label class="form-check-label" for="efectivo">
+                                Efectivo
+                            </label>
+                        </div>
+                        
+                        <div id="efectivo-detalles">
+                            <div class="mb-3">
+                                <label for="monto_recibido" class="form-label">Monto recibido</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" id="monto_recibido" name="monto_recibido" value="{{ total_activo }}" min="{{ total_activo }}">
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="cambio" class="form-label">Cambio a devolver</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="text" class="form-control" id="cambio" name="cambio" readonly value="0.00">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="radio" name="metodo_pago" id="tarjeta" value="tarjeta">
+                            <label class="form-check-label" for="tarjeta">
+                                Tarjeta de crédito/débito (POS externo)
+                            </label>
+                        </div>
+                        
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="imprimir_recibo" name="imprimir_recibo" checked>
+                            <label class="form-check-label" for="imprimir_recibo">
+                                Imprimir recibo
+                            </label>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{% url 'orders:todos_los_pedidos' %}" class="btn btn-secondary">Cancelar</a>
+                            <button type="submit" class="btn btn-success">Completar pago</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Manejo de métodos de pago
+    const metodoPago = document.querySelectorAll('input[name="metodo_pago"]');
+    const efectivoDetalles = document.getElementById('efectivo-detalles');
+    
+    metodoPago.forEach(function(radio) {
+        radio.addEventListener('change', function() {
+            if (this.value === 'tarjeta') {
+                efectivoDetalles.classList.add('d-none');
+            } else {
+                efectivoDetalles.classList.remove('d-none');
+            }
+        });
+    });
+    
+    // Cálculo del cambio en efectivo
+    const montoRecibido = document.getElementById('monto_recibido');
+    const cambio = document.getElementById('cambio');
+    const totalPedido = {{ total_activo|default:0 }};
+    
+    montoRecibido.addEventListener('input', function() {
+        const recibido = parseFloat(this.value) || 0;
+        const cambioCalculado = recibido - totalPedido;
+        cambio.value = cambioCalculado > 0 ? cambioCalculado.toFixed(2) : '0.00';
+    });
+});
+</script>
+{% endblock %}

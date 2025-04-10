@@ -1,0 +1,238 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load producto_templatetags %}
+
+{% block extra_css %}
+<style>
+    .categoria-btn {
+        transition: all 0.3s ease;
+    }
+    .categoria-btn.active {
+        background-color: #007bff;
+        color: white;
+    }
+    .producto-card {
+        transition: transform 0.2s;
+        cursor: pointer;
+    }
+    .producto-card:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .eliminar-producto {
+        padding: 0.15rem 0.3rem;
+        font-size: 0.75rem;
+        margin-left: 0.5rem;
+    }
+    
+    .eliminar-producto:hover {
+        color: white !important;
+        background-color: #dc3545;
+        border-color: #dc3545;
+    }
+    .btn-ingresar {
+        background-color: #28a745;
+        border-color: #28a745;
+    }
+    .btn-ingresar:hover {
+        background-color: #218838;
+        border-color: #1e7e34;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-9">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="mb-0">
+                        <i class="fas fa-utensils me-2"></i>Tomar Pedido - Mesa {{ mesa.numero }}
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <!-- Categorías -->
+                    <div class="mb-4">
+                        <h3 class="mb-3">Categorías</h3>
+                        <div class="btn-group" role="group">
+                            {% for categoria in categorias %}
+                                <button 
+                                    class="btn btn-outline-primary categoria-btn {% if categoria.id == categoria_activa %}active{% endif %}"
+                                    data-categoria="{{ categoria.id }}"
+                                >
+                                    {{ categoria.nombre }}
+                                </button>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Productos por Categoría -->
+                    {% for categoria in categorias %}
+                        <div 
+                            class="categoria-productos" 
+                            data-categoria="{{ categoria.id }}" 
+                            style="display: {% if categoria.id == categoria_activa %}block{% else %}none{% endif %};"
+                        >
+                            <h4 class="mb-3">{{ categoria.nombre }}</h4>
+                            <div class="row">
+                                {% for producto in productos_por_categoria|get_item:categoria %}
+                                    <div class="col-md-3 mb-3">
+                                        <div class="card producto-card">
+                                            <div class="card-body">
+                                                <h5 class="card-title">{{ producto.nombre }}</h5>
+                                                <p class="card-text text-muted">${{ producto.precio|floatformat:0 }}</p>
+                                                <form method="post" action="{% url 'orders:tomar_pedido' mesa.id %}">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="action" value="add_producto">
+                                                    <input type="hidden" name="producto_id" value="{{ producto.id }}">
+                                                    <input type="hidden" name="categoria_activa" value="{{ categoria.id }}">
+                                                    <div class="input-group">
+                                                        <input 
+                                                            type="number" 
+                                                            name="cantidad" 
+                                                            value="1" 
+                                                            min="1" 
+                                                            class="form-control form-control-sm"
+                                                        >
+                                                        <button 
+                                                            type="submit" 
+                                                            class="btn btn-success btn-sm"
+                                                        >
+                                                            <i class="fas fa-plus me-1"></i>Agregar
+                                                        </button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Detalles del Pedido -->
+        <div class="col-md-3">
+            <div class="card shadow-sm">
+                <div class="card-header bg-secondary text-white">
+                    <h3 class="mb-0">
+                        <i class="fas fa-receipt me-2"></i>Pedido Actual
+                    </h3>
+                </div>
+                <div class="card-body">
+                    {% if pedido_existente %}
+                        <div class="list-group mb-3">
+                            {% for detalle in pedido_existente.detalles.all %}
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        {{ detalle.producto.nombre }} x{{ detalle.cantidad }}
+                                        <button 
+                                            class="btn btn-sm btn-outline-danger eliminar-producto"
+                                            data-detalle-id="{{ detalle.id }}"
+                                            title="Eliminar producto"
+                                        >
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                    <span class="badge bg-primary rounded-pill">${{ detalle.subtotal|floatformat:0 }}</span>
+                                </div>
+                            {% endfor %} 
+                        </div>
+                        <div class="d-flex justify-content-between mb-3">
+                            <strong>Total</strong>
+                            <span class="h5 mb-0">${{ total_pedido|floatformat:0 }}</span>
+                        </div>
+                        <a href="{% url 'users:dashboard' %}" class="btn btn-primary w-100">
+                            <i class="fas fa-home me-2"></i>Ingresar
+                        </a>
+                    {% else %}
+                        <p class="text-muted text-center">No hay pedidos en curso</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>      
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Guardar la categoría seleccionada en localStorage
+    document.querySelectorAll('.categoria-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const categoriaId = this.dataset.categoria;
+            localStorage.setItem('categoriaActiva', categoriaId);
+            
+            // Ocultar todos los productos
+            document.querySelectorAll('.categoria-productos').forEach(el => {
+                el.style.display = 'none';
+            });
+
+            // Desactivar botones
+            document.querySelectorAll('.categoria-btn').forEach(el => {
+                el.classList.remove('active');
+                el.classList.add('btn-outline-primary');
+            });
+
+            // Mostrar productos de la categoría seleccionada
+            const productos = document.querySelector(`.categoria-productos[data-categoria="${categoriaId}"]`);
+            if (productos) {
+                productos.style.display = 'block';
+            }
+
+            // Activar botón actual
+            this.classList.remove('btn-outline-primary');
+            this.classList.add('active');
+        });
+    });
+
+    // Al cargar la página, verificar si hay una categoría activa en localStorage
+    const categoriaActiva = localStorage.getItem('categoriaActiva');
+    if (categoriaActiva) {
+        const btnActivo = document.querySelector(`.categoria-btn[data-categoria="${categoriaActiva}"]`);
+        if (btnActivo) {
+            btnActivo.click(); // Simular click para activar la categoría
+        }
+    }
+
+    // Mejor manejo para eliminar productos
+    document.addEventListener('click', function(e) {
+        const eliminarBtn = e.target.closest('.eliminar-producto');
+        if (eliminarBtn) {
+            e.preventDefault();
+            const detalleId = eliminarBtn.dataset.detalleId;
+            
+            if (confirm('¿Estás seguro de que deseas eliminar este producto del pedido?')) {
+                // Guardar categoría activa antes de enviar
+                const categoriaActiva = localStorage.getItem('categoriaActiva');
+                
+                fetch('', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    body: `action=remove_producto&detalle_id=${detalleId}&categoria_activa=${categoriaActiva}`
+                })
+                .then(response => {
+                    if (response.redirected) {
+                        window.location.href = response.url;
+                    } else if (!response.ok) {
+                        throw new Error('Error en la respuesta del servidor');
+                    }
+                    return response.json();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Ocurrió un error al eliminar el producto');
+                });
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+
+{% block title %}Leche y Miel{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="my-4">Bienvenido al Sistema de Cafetería</h1>
+            
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+            
+            <div class="row">
+                {% if user.rol.nombre == 'administrador' %}
+                <div class="col-md-4 mb-4">
+                    <div class="card shadow">
+                        <div class="card-body">
+                            <h5 class="card-title">Gestión de Usuarios</h5>
+                            <p class="card-text">Administra los usuarios del sistema.</p>
+                            <a href="{% url 'users:usuario_list' %}" class="btn btn-primary">Ir a Usuarios</a>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <div class="col-md-4 mb-4">
+                    <div class="card shadow">
+                        <div class="card-body">
+                            <h5 class="card-title">Mi Perfil</h5>
+                            <p class="card-text">Gestiona tu información personal.</p>
+                            <a href="{% url 'users:perfil' %}" class="btn btn-info">Ver Perfil</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Aquí puedes añadir más tarjetas según los roles y funcionalidades -->
+                
+                {% if user.rol.nombre == 'caja' or user.rol.nombre == 'administrador' %}
+                <div class="col-md-4 mb-4">
+                    <div class="card shadow">
+                        <div class="card-body">
+                            <h5 class="card-title">Gestión de Mesas</h5>
+                            <p class="card-text">Administra las ventas y facturas.</p>
+                            <div class="d-flex justify-content-around">
+                                <a href="{% url 'orders:lista_mesas' %}" class="btn btn-primary">Mesas</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if user.rol.nombre == 'administrador' or user.rol.nombre == 'caja' %}
+                <div class="col-md-4 mb-4">
+                    <div class="card shadow">
+                        <div class="card-body">
+                            <h5 class="card-title">Gestión de Productos</h5>
+                            <p class="card-text">Administra productos, categorías y áreas.</p>
+                            <div class="d-flex justify-content-around">
+                                <a href="{% url 'products:producto_list' %}" class="btn btn-primary">Productos</a>
+                                <a href="{% url 'products:categoria_list' %}" class="btn btn-info">Categorías</a>
+                                <a href="{% url 'products:area_preparacion_list' %}" class="btn btn-info">Area Preparacion</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if user.rol.nombre == 'mesero' or user.rol.nombre == 'administrador' %}
+                <div class="col-md-4 mb-4">
+                    <div class="card shadow">
+                        <div class="card-body">
+                            <h5 class="card-title">Gestión de Órdenes</h5>
+                            <p class="card-text">Crea y administra órdenes de clientes.</p>
+                            <div class="d-flex justify-content-around">
+                              
+                                <a href="{% url 'orders:seleccionar_mesa' %}" class="btn btn-info">Seleccionar Mesa</a>
+                                <a href="{% url 'orders:lista_pedidos_pendientes' %}" class="btn btn-info">Pedidos Pendientes</a>
+                                <a href="{% url 'orders:todos_los_pedidos' %}" class="btn btn-info">Pedidos Todos</a>
+                                                                                          
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if user.rol.nombre == 'cocina' or user.rol.nombre == 'bar' or user.rol.nombre == 'administrador' %}
+                <div class="col-md-4 mb-4">
+                    <div class="card shadow">
+                        <div class="card-body">
+                            <h5 class="card-title">Cocina/Bar</h5>
+                            <p class="card-text">Ver órdenes pendientes y en preparación.</p>
+                            <a href="{% url 'orders:pedidos_preparacion' %}" class="btn btn-info">Ir a Preparación</a>
+                            
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
