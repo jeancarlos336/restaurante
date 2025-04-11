@@ -32,7 +32,7 @@
             <form method="post">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-danger">Confirmar Eliminación</button>
-                <a href="{% url 'categoria_detail' object.id %}" class="btn btn-secondary">Cancelar</a>
+                <a href="{% url 'products:Categoria_DetailView' object.id %}" class="btn btn-secondary">Cancelar</a>
             </form>
         </div>
     </div>

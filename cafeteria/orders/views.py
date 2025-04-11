@@ -527,24 +527,40 @@ def imprimir_recibo_pedido(request, pedido_id):
         'total_correcto': total_correcto,
         'cambio_correcto': cambio_correcto
     })    
-
 @login_required
 def pedidos_preparacion(request):
     # Determinar el área del usuario actual
     user = request.user
     
     if not hasattr(user, 'rol'):
-        return redirect('home')
+        messages.error(request, "Tu usuario no tiene un rol asignado.")
+        return redirect('dashboard')
     
     try:
+        # Permitir acceso a cocina, bar o administrador
         if user.rol.nombre == Rol.COCINA:
             area_nombre = AreaPreparacion.COCINA
             template = 'orders/pedidos/pedidos_cocina.html'
         elif user.rol.nombre == Rol.BAR:
             area_nombre = AreaPreparacion.BAR
             template = 'orders/pedidos/pedidos_bar.html'
+        elif user.rol.nombre == Rol.ADMINISTRADOR:
+            # Para administrador, podemos mostrar ambas áreas o elegir una por defecto
+            area_nombre = request.GET.get('area', AreaPreparacion.COCINA)  # Parámetro opcional para cambiar de área
+            
+            # Validar que el área solicitada sea válida
+            if area_nombre not in [AreaPreparacion.COCINA, AreaPreparacion.BAR]:
+                area_nombre = AreaPreparacion.COCINA
+            
+            # Elegir la plantilla correspondiente
+            if area_nombre == AreaPreparacion.COCINA:
+                template = 'orders/pedidos/pedidos_cocina.html'
+            else:
+                template = 'orders/pedidos/pedidos_bar.html'
         else:
-            return redirect('home')
+            # Cualquier otro rol no tiene permiso
+            messages.error(request, "No tienes autorización para acceder a esta sección.")
+            return redirect('dashboard')
         
         # Obtener pedidos con items pendientes para esta área
         pedidos = Pedido.objects.filter(
@@ -571,10 +587,16 @@ def pedidos_preparacion(request):
             'area': AreaPreparacion.objects.get(nombre=area_nombre)
         }
         
+        # Si es administrador, agregar opciones para cambiar de área
+        if user.rol.nombre == Rol.ADMINISTRADOR:
+            context['es_admin'] = True
+            context['area_actual'] = area_nombre
+        
         return render(request, template, context)
     
     except AreaPreparacion.DoesNotExist:
-        return redirect('home')
+        messages.error(request, "El área de preparación no existe.")
+        return redirect('dashboard')
 
 @require_POST
 @login_required

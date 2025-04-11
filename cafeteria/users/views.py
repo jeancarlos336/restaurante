@@ -7,6 +7,10 @@ from django.views.generic import ListView, CreateView, UpdateView, DeleteView, D
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from .models import Usuario, Rol
 from .forms import UsuarioCreationForm, UsuarioUpdateForm, LoginForm
+from django.contrib.auth.views import PasswordChangeView
+from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib.auth import update_session_auth_hash
+
 
 # Vistas para login y logout
 def login_view(request):
@@ -70,8 +74,18 @@ class UsuarioUpdateView(LoginRequiredMixin, EsAdministrador, UpdateView):
     success_url = reverse_lazy('users:usuario_list')
     
     def form_valid(self, form):
+        response = super().form_valid(form)
+        
+        password1 = form.cleaned_data.get("password1")
+        password2 = form.cleaned_data.get("password2")
+        
+        if password1 and password1 == password2:
+            self.object.set_password(password1)
+            self.object.save()
+        
         messages.success(self.request, "Usuario actualizado correctamente.")
-        return super().form_valid(form)
+        return response
+
 
 class UsuarioDetailView(LoginRequiredMixin, EsAdministrador, DetailView):
     model = Usuario
@@ -100,3 +114,20 @@ def perfil_view(request):
         form = UsuarioUpdateForm(instance=request.user)
     
     return render(request, 'users/perfil.html', {'form': form})
+
+
+class CambiarContrasenaView(LoginRequiredMixin, PasswordChangeView):
+    template_name = 'users/cambiar_contrasena.html'
+    form_class = PasswordChangeForm
+    success_url = reverse_lazy('users:perfil')
+    
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        form.fields['old_password'].widget.attrs.update({'class': 'form-control', 'autocomplete': 'off'})
+        form.fields['new_password1'].widget.attrs.update({'class': 'form-control', 'autocomplete': 'off'})
+        form.fields['new_password2'].widget.attrs.update({'class': 'form-control', 'autocomplete': 'off'})
+        return form
+    
+    def form_valid(self, form):
+        messages.success(self.request, 'Tu contraseña ha sido cambiada exitosamente.')
+        return super().form_valid(form)

@@ -35,6 +35,8 @@ LOGIN_REDIRECT_URL = 'dashboard'
 LOGOUT_REDIRECT_URL = 'login'
 # Application definition
 
+
+
 # settings.py
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:8000",
@@ -63,9 +65,9 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "audit.middleware.AuditMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
-    "django.middleware.clickjacking.XFrameOptionsMiddleware",
- 
+    "django.middleware.clickjacking.XFrameOptionsMiddleware", 
 ]
 
 ROOT_URLCONF = "cafeteria.urls"
@@ -153,10 +155,4 @@ STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-
-# Configuración de archivos estáticos y medios
-
-
-
-
 
