@@ -26,7 +26,7 @@ SECRET_KEY = "django-insecure-yv1a-#q#0*n@@_5j3=94&@$r(&s&$wfuf7#q)i+fv+qfi6@ht3
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["10.201.71.215","127.0.0.1"]
+ALLOWED_HOSTS = ["10.201.71.215","127.0.0.1","localhost"]
 
 # Configuración de autenticación
 LOGIN_URL = 'users:login'
@@ -36,12 +36,15 @@ LOGOUT_REDIRECT_URL = 'login'
 # Application definition
 
 
+# Duración de la sesión (5 minutos)
+SESSION_COOKIE_AGE = 300  # 5 minutos en segundos
+SESSION_SAVE_EVERY_REQUEST = True
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
 # settings.py
+# Si estás usando CORS
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:8000",
-    "http://127.0.0.1:8000",
-    "http://10.201.71.215:8000"
+    f'http://{host}:8000' for host in ALLOWED_HOSTS if host not in ['localhost', '127.0.0.1', '0.0.0.0']
 ]
 
 INSTALLED_APPS = [
@@ -68,6 +71,7 @@ MIDDLEWARE = [
     "audit.middleware.AuditMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware", 
+    "users.middleware.SessionTimeoutMiddleware",
 ]
 
 ROOT_URLCONF = "cafeteria.urls"
@@ -126,14 +130,9 @@ AUTH_PASSWORD_VALIDATORS = [
 
 
 # Internationalization
-# https://docs.djangoproject.com/en/5.1/topics/i18n/
-
 LANGUAGE_CODE = "es-cl"
-
-TIME_ZONE = "UTC"
-
+TIME_ZONE = "America/Santiago"
 USE_I18N = True
-
 USE_TZ = True
 
 
@@ -156,3 +155,47 @@ STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+
+# Configuraciones de seguridad adicionales para producción
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = 'DENY'
+
+# Configuraciones adicionales de seguridad
+CSRF_TRUSTED_ORIGINS = [
+    f'http://{host}:8000' for host in ALLOWED_HOSTS if host not in ['localhost', '127.0.0.1', '0.0.0.0']
+]
+
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "file": {
+            "level": "DEBUG",
+            "class": "logging.FileHandler",
+            "filename": "auth_debug.log",
+        },
+    },
+    "loggers": {
+        "django.security": {
+            "handlers": ["file"],
+            "level": "DEBUG",
+            "propagate": True,
+        },
+        "django.db.backends": {
+            "handlers": ["file"],
+            "level": "DEBUG",
+            "propagate": True,
+        },
+        "django.auth": {
+            "handlers": ["file"],
+            "level": "DEBUG",
+            "propagate": True,
+        },
+    },
+}

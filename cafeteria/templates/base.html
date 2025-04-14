@@ -135,10 +135,43 @@
     <!-- Fix Dropdown Issue -->
     <script>
         document.addEventListener("DOMContentLoaded", function () {
+            // Mantener la funcionalidad de los dropdowns de Bootstrap
             var dropdownElementList = [].slice.call(document.querySelectorAll('.dropdown-toggle'));
             var dropdownList = dropdownElementList.map(function (dropdownToggleEl) {
                 return new bootstrap.Dropdown(dropdownToggleEl);
             });
+    
+            // NUEVO: Sistema de control de inactividad
+            // Lista de eventos que indican actividad del usuario
+            const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
+            
+            // Función para actualizar la actividad
+            function updateUserActivity() {
+                fetch('/usuarios/update_activity/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                });
+            }
+            
+            // Añadir listeners para cada evento
+            events.forEach(event => {
+                document.addEventListener(event, function() {
+                    // Actualizar solo si pasaron más de 10 segundos desde la última actualización
+                    if (!window.lastActivityUpdate || (Date.now() - window.lastActivityUpdate) > 10000) {
+                        window.lastActivityUpdate = Date.now();
+                        updateUserActivity();
+                    }
+                });
+            });
+            
+            // Función auxiliar para obtener cookies
+            function getCookie(name) {
+                const value = `; ${document.cookie}`;
+                const parts = value.split(`; ${name}=`);
+                if (parts.length === 2) return parts.pop().split(';').shift();
+            }
         });
     </script>
     

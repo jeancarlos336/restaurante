@@ -11,6 +11,15 @@ from django.contrib.auth.views import PasswordChangeView
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth import update_session_auth_hash
 
+from django.http import HttpResponse
+from django.views.decorators.http import require_POST
+from django.utils import timezone
+
+@require_POST
+def update_activity(request):
+    if request.user.is_authenticated:
+        request.session['last_activity'] = timezone.now().isoformat()
+    return HttpResponse(status=204)  # No content response
 
 # Vistas para login y logout
 def login_view(request):

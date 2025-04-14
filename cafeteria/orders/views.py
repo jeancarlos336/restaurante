@@ -403,7 +403,7 @@ def procesar_pago(request, pedido_id):
         )        
         
         if metodo_pago == 'efectivo':
-            monto_recibido = float(request.POST.get('monto_recibido', 0))
+            monto_recibido = float(request.POST.get('monto_recibido') or 0)
             pago.notas = f"Monto recibido: ${monto_recibido}, Cambio: ${monto_recibido - pedido.total}"
         elif metodo_pago == 'tarjeta':
             # En un entorno real, aquí iría la integración con un procesador de pagos
