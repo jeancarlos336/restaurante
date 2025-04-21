@@ -135,24 +135,29 @@
           <p class="card-text">Administra cuentas, permisos y roles de los usuarios del sistema.</p>
           <div class="d-flex justify-content-around">
             <a href="{% url 'users:usuario_list' %}" class="btn btn-primary"><i class="fas fa-user-cog me-1"></i> Ir a Usuarios</a>
-          </div>
-        </div>
-      </div>
-    </div>
-    {% endif %}
-    
-    <div class="col-md-4 mb-4">
-      <div class="card shadow">
-        <div class="card-body">
-          <h5 class="card-title"><i class="fas fa-id-card"></i> Mi Perfil</h5>
-          <p class="card-text">Visualiza y actualiza tu información personal, contraseña y preferencias del sistema.</p>
-          <div class="d-flex justify-content-around">
             <a href="{% url 'users:perfil' %}" class="btn btn-info"><i class="fas fa-user-circle me-1"></i> Ver Perfil</a>
           </div>
         </div>
       </div>
     </div>
-    
+    {% endif %}
+
+      {% if user.rol.nombre == 'administrador' %}
+      <div class="col-md-4 mb-4">
+        <div class="card shadow">
+          <div class="card-body">
+            <h5 class="card-title"><i class="fas fa-users"></i> Gestión de Compras</h5>
+            <p class="card-text">Administra Proveedores y Compras</p>
+            <div class="d-flex justify-content-around">
+              <a href="{% url 'compras:compra_list' %}" class="btn btn-primary"><i class="fas fa-user-cog me-1"></i> Compras</a>
+              <a href="{% url 'compras:proveedor_list' %}" class="btn btn-info"><i class="fas fa-user-circle me-1"></i> Proveedores</a>
+              
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+        
     {% if user.rol.nombre == 'caja' or user.rol.nombre == 'administrador' %}
     <div class="col-md-4 mb-4">
       <div class="card shadow">
@@ -176,14 +181,14 @@
           <div class="d-flex justify-content-around">
             <a href="{% url 'products:producto_list' %}" class="btn btn-primary">Productos</a>
             <a href="{% url 'products:categoria_list' %}" class="btn btn-info">Categorías</a>
-            <a href="{% url 'products:area_preparacion_list' %}" class="btn btn-info">Áreas</a>
+            <a href="{% url 'products:area_preparacion_list' %}" class="btn btn-warning">Áreas</a>
           </div>
         </div>
       </div>
     </div>
     {% endif %}
     
-    {% if user.rol.nombre == 'mesero' or user.rol.nombre == 'administrador' %}
+    {% if user.rol.nombre == 'mesero' or user.rol.nombre == 'administrador' or user.rol.nombre == 'caja' %}
     <div class="col-md-4 mb-4">
       <div class="card shadow">
         <div class="card-body">
@@ -194,14 +199,29 @@
             <a href="{% url 'orders:lista_pedidos_pendientes' %}" class="btn btn-info"><i class="fas fa-hourglass-half me-1"></i> Pendientes</a>
           </div>
           <div class="d-flex justify-content-around mt-2">
-            <a href="{% url 'orders:todos_los_pedidos' %}" class="btn btn-info"><i class="fas fa-list-alt me-1"></i> Historial</a>
-          </div>
+            <a href="{% url 'orders:todos_los_pedidos' %}" class="btn btn-warning"><i class="fas fa-list-alt me-1"></i> Historial</a>
+          </div>          
         </div>
       </div>
     </div>
     {% endif %}
     
-    {% if user.rol.nombre == 'cocina' or user.rol.nombre == 'bar' or user.rol.nombre == 'administrador' %}
+    {% if user.rol.nombre == 'administrador' or user.rol.nombre == 'caja' %}
+    <div class="col-md-4 mb-4">
+      <div class="card shadow">
+        <div class="card-body">
+          <h5 class="card-title"><i class="fas fa-id-card"></i> Informes</h5>
+          <p class="card-text">Visualiza y actualiza tu información personal, contraseña y preferencias del sistema.</p>
+          <div class="d-flex justify-content-around">
+            <a href="{% url 'orders:informe_ventas' %}" class="btn btn-primary"><i class="fas fa-list-alt me-1"></i> Informe de Ventas</a>
+            <a href="{% url 'compras:balance_anual' %}" class="btn btn-info"><i class="fas fa-user-circle me-1"></i> Balance Anual</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if user.rol.nombre == 'cocina' or user.rol.nombre == 'bar' %}
     <div class="col-md-4 mb-4">
       <div class="card shadow">
         <div class="card-body">

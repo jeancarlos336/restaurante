@@ -54,11 +54,16 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.humanize",
     "users",
     "products",
     "orders",
     "notifications",
     "audit",
+    "compras",
+    "crispy_forms",
+    "crispy_bootstrap5",
+
 ]
 
 
@@ -75,6 +80,10 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = "cafeteria.urls"
+
+
+CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
+CRISPY_TEMPLATE_PACK = 'bootstrap5'
 
 TEMPLATES = [
     {

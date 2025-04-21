@@ -30,8 +30,8 @@
                                 <tr>
                                     <td class="text-start">{{ detalle.producto.nombre }}</td>
                                     <td class="text-center">{{ detalle.cantidad }}</td>
-                                    <td class="text-end">${{ detalle.precio_unitario|floatformat:2 }}</td>
-                                    <td class="text-end">${{ detalle.cantidad|multiply:detalle.precio_unitario|floatformat:2 }}</td>
+                                    <td class="text-end">${{ detalle.precio_unitario|floatformat:0 }}</td>
+                                    <td class="text-end">${{ detalle.cantidad|multiply:detalle.precio_unitario|floatformat:0 }}</td>
                                     <td class="text-center">
                                         <form method="post" class="d-inline">
                                             {% csrf_token %}
@@ -52,7 +52,7 @@
                 <div class="card-footer bg-white">
                     <div class="d-flex justify-content-end align-items-center">
                         <h4 class="mb-0 me-3">Total:</h4>
-                        <h3 class="mb-0 text-primary">${{ pedido.monto_total|floatformat:2 }}</h3>
+                        <h3 class="mb-0 text-primary">${{ pedido.monto_total|floatformat:0 }}</h3>
                     </div>
                 </div>
             </div>

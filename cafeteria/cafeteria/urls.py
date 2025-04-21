@@ -13,6 +13,7 @@ urlpatterns = [
     path('pedidos/', include('orders.urls')),
     path('notificaciones/', include('notifications.urls')),
     path('audit/', include('audit.urls')),
+    path('compras/', include('compras.urls')),
     path('', RedirectView.as_view(url='usuarios/login/', permanent=False)),
     
 

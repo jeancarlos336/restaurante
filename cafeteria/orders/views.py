@@ -13,7 +13,7 @@ from django.views.generic import ListView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.decorators.http import require_POST
 from datetime import datetime
-from django.db.models import Q
+from django.db.models import Q,Sum
 import json
 
 
@@ -638,3 +638,58 @@ def actualizar_estado_item(request):
         return JsonResponse({'error': 'Ítem no encontrado'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+    
+    
+    #informes
+
+
+def informe_ventas(request):
+    # Valores predeterminados
+    fecha_inicio = request.GET.get('fecha_inicio', '')
+    fecha_fin = request.GET.get('fecha_fin', '')
+    metodo_pago = request.GET.get('metodo_pago', '')
+    
+    # Preparar consulta base
+    pagos = Pago.objects.all()
+    
+    # Aplicar filtros si están presentes
+    if fecha_inicio:
+        try:
+            fecha_inicio_obj = datetime.strptime(fecha_inicio, '%Y-%m-%d')
+            pagos = pagos.filter(fecha__gte=fecha_inicio_obj)
+        except ValueError:
+            fecha_inicio = ''
+    
+    if fecha_fin:
+        try:
+            fecha_fin_obj = datetime.strptime(fecha_fin, '%Y-%m-%d')
+            pagos = pagos.filter(fecha__lte=fecha_fin_obj)
+        except ValueError:
+            fecha_fin = ''
+    
+    if metodo_pago:
+        pagos = pagos.filter(metodo=metodo_pago)
+    
+    # Calcular totales
+    total_ventas = pagos.aggregate(total=Sum('monto'))['total'] or 0
+    
+    # Agrupar por método de pago
+    resumen_por_metodo = {}
+    for metodo, nombre in Pago.METODOS_PAGO:
+        monto = pagos.filter(metodo=metodo).aggregate(total=Sum('monto'))['total'] or 0
+        resumen_por_metodo[nombre] = monto
+    
+    # Obtener pagos para mostrar en la tabla
+    lista_pagos = pagos.select_related('pedido').order_by('-fecha')
+    
+    context = {
+        'pagos': lista_pagos,
+        'fecha_inicio': fecha_inicio,
+        'fecha_fin': fecha_fin,
+        'metodo_pago': metodo_pago,
+        'total_ventas': total_ventas,
+        'resumen_por_metodo': resumen_por_metodo,
+        'metodos_pago': Pago.METODOS_PAGO,
+    }
+    
+    return render(request, 'orders/pedidos/informe_ventas.html', context)

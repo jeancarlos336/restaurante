@@ -47,3 +47,10 @@ def in_list(value, arg):
     {{ detalle.estado|in_list:"cancelado,entregado,otro_estado" }}
     """
     return str(value) in arg.split(',')
+
+@register.filter
+def endswith(value, arg):
+    """
+    Verifica si el valor termina con el argumento
+    """
+    return value.endswith(arg)

@@ -35,6 +35,10 @@ urlpatterns = [
     path('preparacion/', views.pedidos_preparacion, name='pedidos_preparacion'),
     path('actualizar-estado/', views.actualizar_estado_item, name='actualizar_estado_item'),
     
+    
+    #informes
+    path('informe-ventas/', views.informe_ventas, name='informe_ventas'),
+    
     # Añade estas URLs a tu archivo urls.py
     
 
