@@ -75,9 +75,9 @@
 {% block extra_js %}
 <script>
     $(document).ready(function() {
-        // Inicializar datepicker para el campo fecha
+        // Inicializar datepicker para el campo fecha con formato dd-mm-yyyy
         $('#id_fecha').datepicker({
-            format: 'yyyy-mm-dd',
+            format: 'dd-mm-yyyy',
             autoclose: true,
             todayHighlight: true,
             language: 'es'
