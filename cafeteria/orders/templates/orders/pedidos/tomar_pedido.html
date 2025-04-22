@@ -4,25 +4,44 @@
 
 {% block extra_css %}
 <style>
+    /* Estilos generales */
     .categoria-btn {
         transition: all 0.3s ease;
+        margin-bottom: 8px;
+        margin-right: 4px;
+        border-radius: 20px;
+        font-weight: 500;
+        padding: 6px 12px;
     }
+    
     .categoria-btn.active {
         background-color: #007bff;
         color: white;
     }
+    
     .producto-card {
         transition: transform 0.2s;
         cursor: pointer;
+        height: 100%;
+        border-radius: 8px;
     }
+    
     .producto-card:hover {
-        transform: scale(1.05);
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        transform: scale(1.03);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
     }
+    
     .eliminar-producto {
         padding: 0.15rem 0.3rem;
         font-size: 0.75rem;
         margin-left: 0.5rem;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
     }
     
     .eliminar-producto:hover {
@@ -30,32 +49,78 @@
         background-color: #dc3545;
         border-color: #dc3545;
     }
+    
     .btn-ingresar {
         background-color: #28a745;
         border-color: #28a745;
     }
+    
     .btn-ingresar:hover {
         background-color: #218838;
         border-color: #1e7e34;
+    }
+    
+    /* Estilos para dispositivos */
+    .categorias-wrapper {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-start;
+        gap: 5px;
+    }
+    
+    .categoria-productos {
+        padding-bottom: 20px;
+    }
+    
+    .pedido-container {
+        position: sticky;
+        top: 20px;
+    }
+    
+    /* Estilos responsivos */
+    @media (max-width: 767px) {
+        .categoria-btn {
+            font-size: 0.9rem;
+            padding: 5px 10px;
+            margin-bottom: 5px;
+        }
+        
+        .categorias-wrapper {
+            overflow-x: auto;
+            flex-wrap: nowrap;
+            padding-bottom: 10px;
+            -webkit-overflow-scrolling: touch;
+            scroll-behavior: smooth;
+        }
+        
+        .pedido-container {
+            margin-top: 20px;
+            position: relative;
+        }
+        
+        .producto-card .card-body {
+            padding: 10px;
+        }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid">
+<div class="container-fluid py-3">
     <div class="row">
-        <div class="col-md-9">
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white">
-                    <h2 class="mb-0">
+        <!-- Sección de productos -->
+        <div class="col-lg-9 col-md-8 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-primary text-white d-flex align-items-center">
+                    <h3 class="mb-0">
                         <i class="fas fa-utensils me-2"></i>Tomar Pedido - Mesa {{ mesa.numero }}
-                    </h2>
+                    </h3>
                 </div>
                 <div class="card-body">
                     <!-- Categorías -->
                     <div class="mb-4">
-                        <h3 class="mb-3">Categorías</h3>
-                        <div class="btn-group" role="group">
+                        <h4 class="mb-2">Categorías</h4>
+                        <div class="categorias-wrapper">
                             {% for categoria in categorias %}
                                 <button 
                                     class="btn btn-outline-primary categoria-btn {% if categoria.id == categoria_activa %}active{% endif %}"
@@ -75,14 +140,14 @@
                             style="display: {% if categoria.id == categoria_activa %}block{% else %}none{% endif %};"
                         >
                             <h4 class="mb-3">{{ categoria.nombre }}</h4>
-                            <div class="row">
+                            <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3">
                                 {% for producto in productos_por_categoria|get_item:categoria %}
-                                    <div class="col-md-3 mb-3">
+                                    <div class="col">
                                         <div class="card producto-card">
-                                            <div class="card-body">
+                                            <div class="card-body d-flex flex-column">
                                                 <h5 class="card-title">{{ producto.nombre }}</h5>
-                                                <p class="card-text text-muted">${{ producto.precio|floatformat:0 }}</p>
-                                                <form method="post" action="{% url 'orders:tomar_pedido' mesa.id %}">
+                                                <p class="card-text text-muted mb-3">${{ producto.precio|floatformat:0 }}</p>
+                                                <form method="post" action="{% url 'orders:tomar_pedido' mesa.id %}" class="mt-auto">
                                                     {% csrf_token %}
                                                     <input type="hidden" name="action" value="add_producto">
                                                     <input type="hidden" name="producto_id" value="{{ producto.id }}">
@@ -93,13 +158,14 @@
                                                             name="cantidad" 
                                                             value="1" 
                                                             min="1" 
-                                                            class="form-control form-control-sm"
+                                                            class="form-control"
                                                         >
                                                         <button 
                                                             type="submit" 
-                                                            class="btn btn-success btn-sm"
+                                                            class="btn btn-success"
                                                         >
-                                                            <i class="fas fa-plus me-1"></i>Agregar
+                                                            <i class="fas fa-plus me-1"></i>
+                                                            <span class="d-none d-sm-inline">Agregar</span>
                                                         </button>
                                                     </div>
                                                 </form>
@@ -115,8 +181,8 @@
         </div>
 
         <!-- Detalles del Pedido -->
-        <div class="col-md-3">
-            <div class="card shadow-sm">
+        <div class="col-lg-3 col-md-4">
+            <div class="card shadow-sm pedido-container">
                 <div class="card-header bg-secondary text-white">
                     <h3 class="mb-0">
                         <i class="fas fa-receipt me-2"></i>Pedido Actual
@@ -128,28 +194,32 @@
                             {% for detalle in pedido_existente.detalles.all %}
                                 <div class="list-group-item d-flex justify-content-between align-items-center">
                                     <div>
-                                        {{ detalle.producto.nombre }} x{{ detalle.cantidad }}
+                                        <span class="fw-medium">{{ detalle.producto.nombre }}</span>
+                                        <span class="badge bg-secondary rounded-pill ms-1">{{ detalle.cantidad }}</span>
                                         <button 
                                             class="btn btn-sm btn-outline-danger eliminar-producto"
                                             data-detalle-id="{{ detalle.id }}"
-                                            title="Eliminar producto"
+                                            title="Eliminar"
                                         >
-                                            <i class="fas fa-trash"></i>
+                                            <i class="fas fa-times"></i>
                                         </button>
                                     </div>
                                     <span class="badge bg-primary rounded-pill">${{ detalle.subtotal|floatformat:0 }}</span>
                                 </div>
                             {% endfor %} 
                         </div>
-                        <div class="d-flex justify-content-between mb-3">
-                            <strong>Total</strong>
-                            <span class="h5 mb-0">${{ total_pedido|floatformat:0 }}</span>
+                        <div class="d-flex justify-content-between mb-3 p-2 bg-light rounded">
+                            <strong class="fs-5">Total</strong>
+                            <span class="h4 mb-0">${{ total_pedido|floatformat:0 }}</span>
                         </div>
-                        <a href="{% url 'users:dashboard' %}" class="btn btn-primary w-100">
-                            <i class="fas fa-home me-2"></i>Ingresar
+                        <a href="{% url 'users:dashboard' %}" class="btn btn-primary w-100 btn-lg">
+                            <i class="fas fa-check-circle me-2"></i>Confirmar Pedido
                         </a>
                     {% else %}
-                        <p class="text-muted text-center">No hay pedidos en curso</p>
+                        <div class="text-center py-5">
+                            <i class="fas fa-shopping-cart mb-3" style="font-size: 2rem; color: #ccc;"></i>
+                            <p class="text-muted">No hay productos en el pedido</p>
+                        </div>
                     {% endif %}
                 </div>
             </div>
@@ -175,17 +245,18 @@ document.addEventListener('DOMContentLoaded', function() {
             // Desactivar botones
             document.querySelectorAll('.categoria-btn').forEach(el => {
                 el.classList.remove('active');
-                el.classList.add('btn-outline-primary');
             });
 
             // Mostrar productos de la categoría seleccionada
             const productos = document.querySelector(`.categoria-productos[data-categoria="${categoriaId}"]`);
             if (productos) {
                 productos.style.display = 'block';
+                
+                // Scroll suave hasta la sección de productos
+                productos.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
 
             // Activar botón actual
-            this.classList.remove('btn-outline-primary');
             this.classList.add('active');
         });
     });
@@ -199,7 +270,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Mejor manejo para eliminar productos
+    // Mejor manejo para eliminar productos con confirmación mediante toast
     document.addEventListener('click', function(e) {
         const eliminarBtn = e.target.closest('.eliminar-producto');
         if (eliminarBtn) {
@@ -208,7 +279,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (confirm('¿Estás seguro de que deseas eliminar este producto del pedido?')) {
                 // Guardar categoría activa antes de enviar
-                const categoriaActiva = localStorage.getItem('categoriaActiva');
+                const categoriaActiva = localStorage.getItem('categoriaActiva') || document.querySelector('.categoria-btn.active')?.dataset.categoria;
                 
                 fetch('', {
                     method: 'POST',
@@ -233,6 +304,17 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+    
+    // Mejorar experiencia móvil: hacer scroll horizontal en categorías
+    const categoriasWrapper = document.querySelector('.categorias-wrapper');
+    if (categoriasWrapper && window.innerWidth < 768) {
+        const activeBtn = document.querySelector('.categoria-btn.active');
+        if (activeBtn) {
+            setTimeout(() => {
+                activeBtn.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+            }, 300);
+        }
+    }
 });
 </script>
 {% endblock %}
