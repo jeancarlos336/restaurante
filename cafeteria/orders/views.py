@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from .forms import PedidoForm, DetallePedidoForm,SeleccionMesaForm,MesaForm
 from products.forms import CategoriaForm,ProductoForm
-from orders.models import Pedido,Mesa,DetallePedido,Pago
+from orders.models import Pedido,Mesa,DetallePedido,Pago,PagoPendiente
 from products.models import Producto,Categoria,AreaPreparacion
 from users.models import Usuario,Rol
 from django.db import transaction
@@ -15,6 +15,7 @@ from django.views.decorators.http import require_POST
 from datetime import datetime
 from django.db.models import Q,Sum
 import json
+from django.utils import timezone
 
 
 
@@ -153,10 +154,12 @@ def tomar_pedido(request, mesa_id):
 
             action = request.POST.get('action')
             
+            # En la vista tomar_pedido, dentro del bloque if action == 'add_producto':
             if action == 'add_producto':
                 # Procesar detalle del pedido
                 producto_id = request.POST.get('producto_id')
                 cantidad = int(request.POST.get('cantidad', 1))
+                notas = request.POST.get('notas', '')  # Capturar las notas del formulario
                 producto = get_object_or_404(Producto, id=producto_id)
 
                 DetallePedido.objects.create(
@@ -164,6 +167,7 @@ def tomar_pedido(request, mesa_id):
                     producto=producto,
                     cantidad=cantidad,
                     precio_unitario=producto.precio,
+                    notas=notas,  # Guardar las notas
                     estado='pendiente'
                 )
 
@@ -182,6 +186,22 @@ def tomar_pedido(request, mesa_id):
                     detalle.delete()
                     pedido_existente.calcular_total()
                     messages.success(request, f'Producto {producto_nombre} eliminado del pedido.')
+                except DetallePedido.DoesNotExist:
+                    messages.error(request, 'No se encontró el detalle del pedido')
+                return redirect('orders:tomar_pedido', mesa_id=mesa.id)
+            
+            # Añadir este bloque en la vista tomar_pedido, junto con los demás bloques de action
+            elif action == 'update_nota':
+                detalle_id = request.POST.get('detalle_id')
+                nota = request.POST.get('nota', '')
+                try:
+                    detalle = DetallePedido.objects.get(
+                        id=detalle_id,
+                        pedido=pedido_existente
+                    )
+                    detalle.notas = nota
+                    detalle.save()
+                    messages.success(request, 'Nota actualizada correctamente.')
                 except DetallePedido.DoesNotExist:
                     messages.error(request, 'No se encontró el detalle del pedido')
                 return redirect('orders:tomar_pedido', mesa_id=mesa.id)
@@ -230,27 +250,7 @@ def detalle_pedido(request, pedido_id):
             pedido.save()
 
     return render(request, 'orders/detalle_pedido.html', {'pedido': pedido})
-@login_required
-def finalizar_pedido(request, pedido_id):
-    """
-    Cierra el pedido y redirecciona al pago
-    """
-    pedido = get_object_or_404(Pedido, id=pedido_id)
-   
-    if request.method == 'POST':
-        # Cambiamos el estado a 'completado' en lugar de 'en_preparacion'
-        # ya que los productos ya fueron entregados
-        pedido.estado = 'completado'
-        pedido.save()
-        
-        messages.success(request, f'El pedido #{pedido.id} ha sido completado. Proceda al pago.')
-        # Redireccionamos directamente a la página de pago
-        return redirect('orders:procesar_pago', pedido_id=pedido.id)
-    
-    # Ahora utilizamos una plantilla diferente que refleje que estamos cerrando el pedido
-    return render(request, 'orders/pedidos/confirmar_cierre_pedido.html', {'pedido': pedido})
 
-# orders/views.py (continuation)
 @login_required
 def seleccionar_mesa(request):
     mesas = Mesa.objects.all().order_by('numero')
@@ -381,117 +381,7 @@ def eliminar_pedido(request, pedido_id):
     # Si el método es GET, mostrar página de confirmación
     return render(request, 'orders/pedidos/confirmar_eliminar_pedido.html', {'pedido': pedido})
 
-@login_required
-def procesar_pago(request, pedido_id):
-    pedido = get_object_or_404(Pedido, id=pedido_id)
-    
-    # Usar solo los productos activos
-    items_activos = pedido.items_activos
-    total_activo = pedido.calcular_total_sin_guardar()
-    
-    if request.method == 'POST':
-        metodo_pago = request.POST.get('metodo_pago')
-        imprimir_recibo = request.POST.get('imprimir_recibo') == 'on'
-        
-        # Actualizar el total del pedido antes de crear el pago
-        pedido.calcular_total()  # Esto actualizará monto_total con solo los items activos
-        
-        pago = Pago(
-            pedido=pedido,
-            monto=pedido.monto_total,
-            metodo=metodo_pago
-        )        
-        
-        if metodo_pago == 'efectivo':
-            monto_recibido = float(request.POST.get('monto_recibido') or 0)
-            pago.notas = f"Monto recibido: ${monto_recibido}, Cambio: ${monto_recibido - pedido.total}"
-        elif metodo_pago == 'tarjeta':
-            # En un entorno real, aquí iría la integración con un procesador de pagos
-            # Solo almacenamos los últimos 4 dígitos por seguridad
-            numero_tarjeta = request.POST.get('numero_tarjeta', '')
-            if numero_tarjeta:
-                ultimos_digitos = numero_tarjeta.replace(' ', '')[-4:]
-                pago.notas = f"Pago con tarjeta terminada en {ultimos_digitos}"
-        
-        pago.save()
-        
-        # Actualizar estado del pedido
-        pedido.estado = 'pagado'
-        pedido.save()
-        
-       
-        
-        
-        # Liberar la mesa marcándola como disponible
-        mesa = pedido.mesa
-        mesa.estado = 'disponible'
-        mesa.save()
-        
-        messages.success(request, f'El pago del pedido #{pedido.id} ha sido procesado exitosamente.')
-        
-        # Si se debe imprimir el recibo, redirigir a la página de impresión
-        if imprimir_recibo:
-            return redirect('orders:imprimir_recibo', pago_id=pago.id)
-        
-        return redirect('orders:lista_pedidos')   
 
-    return render(request, 'orders/pedidos/procesar_pago.html', {
-        'pedido': pedido,
-        'items_activos': items_activos,
-        'total_activo': total_activo
-    })
-
-# Añade estas vistas a tu archivo views.py
-@login_required
-def completar_pago(request, pedido_id):
-    """
-    Procesa el pago y actualiza el estado del pedido
-    """
-    pedido = get_object_or_404(Pedido, id=pedido_id)
-    
-    if request.method == 'POST':
-        metodo_pago = request.POST.get('metodo_pago')
-        imprimir_recibo = request.POST.get('imprimir_recibo') == 'on'
-        
-        # Usar monto_total en lugar de total
-        pago = Pago(
-            pedido=pedido,
-            monto=pedido.monto_total,  # Este es el nombre correcto según tu modelo
-            metodo=metodo_pago
-        )
-        
-        if metodo_pago == 'efectivo':
-            monto_recibido = float(request.POST.get('monto_recibido', 0))
-            cambio = monto_recibido - float(pedido.monto_total)  # Usar monto_total aquí también
-            
-            pago.monto_recibido = monto_recibido
-            pago.cambio = cambio
-            pago.notas = f"Pago en efectivo. Monto recibido: ${monto_recibido}, Cambio: ${cambio}"
-        elif metodo_pago == 'tarjeta':
-            # Simplemente registrar que se pagó con tarjeta usando POS externo
-            pago.notas = "Pago con tarjeta usando terminal POS externa"
-        
-        pago.save()
-        
-        # Actualizar estado del pedido
-        pedido.estado_pago = 'pagado'  # Usar estado_pago en lugar de estado
-        pedido.save()
-        
-        # Liberar la mesa marcándola como disponible
-        mesa = pedido.mesa
-        mesa.estado = 'disponible'
-        mesa.save()
-        
-        messages.success(request, f'El pago del pedido #{pedido.id} ha sido procesado exitosamente. La mesa {mesa.numero} está disponible.')
-        
-        # Siempre imprimir recibo si está marcado
-        if imprimir_recibo:
-            return redirect('orders:imprimir_recibo', pago_id=pago.id)
-        
-        return redirect('orders:todos_los_pedidos')
-    
-    # Si no es POST, redirigir a la página de procesar pago
-    return redirect('orders:procesar_pago', pedido_id=pedido.id)
 @login_required
 def imprimir_recibo(request, pago_id):
     pago = get_object_or_404(Pago, id=pago_id)
@@ -642,7 +532,6 @@ def actualizar_estado_item(request):
     
     #informes
 
-
 def informe_ventas(request):
     # Valores predeterminados
     fecha_inicio = request.GET.get('fecha_inicio', '')
@@ -693,3 +582,176 @@ def informe_ventas(request):
     }
     
     return render(request, 'orders/pedidos/informe_ventas.html', context)
+
+#----------------------------
+
+@login_required
+def completar_pago(request, pedido_id):
+    """
+    Procesa el pago y actualiza el estado del pedido
+    """
+    pedido = get_object_or_404(Pedido, id=pedido_id)
+    
+    if request.method == 'POST':
+        metodo_pago = request.POST.get('metodo_pago')
+        imprimir_recibo = request.POST.get('imprimir_recibo') == 'on'
+        
+        # Usar monto_total en lugar de total
+        pago = Pago(
+            pedido=pedido,
+            monto=pedido.monto_total,
+            metodo=metodo_pago
+        )
+        
+        if metodo_pago == 'efectivo':
+            monto_recibido = float(request.POST.get('monto_recibido', 0))
+            cambio = monto_recibido - float(pedido.monto_total)
+            
+            pago.monto_recibido = monto_recibido
+            pago.cambio = cambio
+            pago.notas = f"Pago en efectivo. Monto recibido: ${monto_recibido}, Cambio: ${cambio}"
+        elif metodo_pago == 'tarjeta':
+            # Simplemente registrar que se pagó con tarjeta usando POS externo
+            pago.notas = "Pago con tarjeta usando terminal POS externa"
+        elif metodo_pago == 'pendiente':
+            # Guardar el pago básico primero
+            pago.notas = "Pago pendiente"
+            pago.save()
+            
+            # Crear registro en PagoPendiente
+            cliente_nombre = request.POST.get('cliente_nombre', '')
+            fecha_promesa = request.POST.get('fecha_promesa', '')
+            notas_adicionales = request.POST.get('notas_adicionales', '')
+            
+            PagoPendiente.objects.create(
+                pago=pago,
+                cliente_nombre=cliente_nombre,
+                fecha_promesa=fecha_promesa,
+                notas_adicionales=notas_adicionales
+            )
+            
+            # No necesitamos continuar con el save de pago aquí ya que ya lo hemos guardado
+            # Actualizar estado del pedido
+            
+            pedido.estado_pago = 'impago'
+            pedido.estado = 'completado'
+            pedido.save()
+            
+            # Liberar la mesa marcándola como disponible
+            mesa = pedido.mesa
+            mesa.estado = 'disponible'
+            mesa.save()
+            
+            messages.success(request, f'El pedido #{pedido.id} ha sido registrado como pendiente para {cliente_nombre}. ' 
+                                       f'La mesa {mesa.numero} está disponible.')
+            
+            if imprimir_recibo:
+                return redirect('orders:imprimir_recibo', pago_id=pago.id)
+            
+            return redirect('orders:todos_los_pedidos')
+        
+        # Si no es pendiente, seguimos con el flujo normal para efectivo y tarjeta
+        pedido.estado = 'completado'
+        pago.save()
+        
+        # Actualizar estado del pedido
+        pedido.estado_pago = 'pagado'
+        pedido.save()
+        
+        # Liberar la mesa marcándola como disponible
+        mesa = pedido.mesa
+        mesa.estado = 'disponible'
+        mesa.save()
+        
+        messages.success(request, f'El pago del pedido #{pedido.id} ha sido procesado exitosamente. '
+                                   f'La mesa {mesa.numero} está disponible.')
+        
+        # Siempre imprimir recibo si está marcado
+        if imprimir_recibo:
+            return redirect('orders:imprimir_recibo', pago_id=pago.id)
+        
+        return redirect('orders:todos_los_pedidos')
+    
+    # Si no es POST, redirigir a la página de procesar pago
+    return redirect('orders:procesar_pago', pedido_id=pedido.id)
+
+@login_required
+def listar_pagos_pendientes(request):
+    """
+    Muestra todos los pagos pendientes
+    """
+    # Filtrar solo los pagos pendientes que no han sido pagados
+    pagos_pendientes = PagoPendiente.objects.filter(esta_pagado=False).order_by('fecha_promesa')
+    
+    # Calcular el total pendiente
+    total_pendiente = pagos_pendientes.aggregate(total=Sum('pago__monto'))['total'] or 0
+    
+    return render(request, 'orders/pedidos/pagos_pendientes.html', {
+        'pagos_pendientes': pagos_pendientes,
+        'total_pendiente': total_pendiente
+    })
+
+@login_required
+def marcar_pago_como_pagado(request, pago_pendiente_id):
+    """
+    Marca un pago pendiente como pagado
+    """
+    pago_pendiente = get_object_or_404(PagoPendiente, id=pago_pendiente_id)
+    
+    if request.method == 'POST':
+        metodo_pago = request.POST.get('metodo_pago')
+        
+        # Actualizar el registro de pago pendiente
+        pago_pendiente.esta_pagado = True
+        pago_pendiente.fecha_pago_real = timezone.now().date()
+        pago_pendiente.save()
+        
+        # Actualizar el pago original
+        pago = pago_pendiente.pago
+        pago.metodo = metodo_pago  # Actualizar al método real con el que se pagó
+        pago.notas += f" | Pagado el {pago_pendiente.fecha_pago_real} con {metodo_pago}"
+        pago.save()
+        
+        # Actualizar el pedido
+        pedido = pago.pedido
+        pedido.estado_pago = 'pagado'
+        pedido.save()
+        
+        messages.success(request, f'El pago pendiente de {pago_pendiente.cliente_nombre} '
+                                   f'por ${pago.monto} ha sido marcado como pagado.')
+        
+        return redirect('orders:pagos_pendientes')
+    
+    return render(request, 'orders/pedidos/marcar_pago_pendiente.html', {
+        'pago_pendiente': pago_pendiente
+    })
+
+@login_required
+def historial_pagos_pendientes(request):
+    """
+    Muestra el historial de pagos pendientes ya pagados
+    """
+    pagos_completados = PagoPendiente.objects.filter(esta_pagado=True).order_by('-fecha_pago_real')
+    
+    return render(request, 'orders/pedidos/historial_pagos_pendientes.html', {
+        'pagos_completados': pagos_completados
+    })
+
+@login_required
+def procesar_pago(request, pedido_id):
+    """
+    Muestra la página para procesar el pago
+    """
+    pedido = get_object_or_404(Pedido, id=pedido_id)
+    
+   
+    
+    # Modificación para usar tu propiedad items_activos
+    items_activos = pedido.items_activos
+    total_activo = sum(detalle.subtotal for detalle in items_activos)
+        
+    return render(request, 'orders/pedidos/procesar_pago.html', {
+        'pedido': pedido,
+        'items_activos': items_activos,
+        'total_activo': total_activo
+    })

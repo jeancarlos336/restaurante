@@ -1,0 +1,66 @@
+
+<!-- templates/orders/pagos_pendientes.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Pagos Pendientes</h1>
+        <div>
+            <a href="{% url 'orders:historial_pagos_pendientes' %}" class="btn btn-outline-secondary">
+                Ver Historial de Pagos
+            </a>
+            <a href="{% url 'orders:todos_los_pedidos' %}" class="btn btn-outline-primary">
+                Volver a Pedidos
+            </a>
+        </div>
+    </div>
+    
+    {% if pagos_pendientes %}
+    <div class="card">
+        <div class="card-header bg-warning text-dark">
+            <div class="d-flex justify-content-between align-items-center">
+                <h3 class="mb-0">Pagos por Cobrar</h3>
+                <h4 class="mb-0">Total pendiente: ${{ total_pendiente|floatformat:2 }}</h4>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Cliente</th>
+                            <th>Fecha Promesa</th>
+                            <th>Pedido #</th>
+                            <th>Monto</th>
+                            <th>Notas</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pago in pagos_pendientes %}
+                        <tr>
+                            <td>{{ pago.cliente_nombre }}</td>
+                            <td>{{ pago.fecha_promesa|date:"d/m/Y" }}</td>
+                            <td>{{ pago.pago.pedido.id }}</td>
+                            <td>${{ pago.pago.monto|floatformat:2 }}</td>
+                            <td>{{ pago.notas_adicionales|default:"-" }}</td>
+                            <td>
+                                <a href="{% url 'orders:marcar_pago_pagado' pago.id %}" class="btn btn-success btn-sm">
+                                    Marcar como Pagado
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-success">
+        No hay pagos pendientes en este momento.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

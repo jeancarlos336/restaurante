@@ -1,4 +1,5 @@
-{% extends 'base.html' %}
+<!-- templates/orders/procesar_pago.html -->
+{% extends "base.html" %}
 
 {% block content %}
 <div class="container my-4">
@@ -90,6 +91,30 @@
                             </label>
                         </div>
                         
+                        <!-- Sección del método pendiente -->
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="radio" name="metodo_pago" id="pendiente" value="pendiente">
+                            <label class="form-check-label" for="pendiente">
+                                Dejar pendiente (clientes frecuentes)
+                            </label>
+                        </div>
+
+                        <!-- Usamos style="display:none;" en lugar de d-none para asegurar compatibilidad -->
+                        <div id="pendiente-detalles" style="display:none;">
+                            <div class="mb-3 border-start border-4 border-warning ps-3 py-2">
+                                <label for="cliente_nombre" class="form-label fw-bold">Nombre del cliente</label>
+                                <input type="text" class="form-control" id="cliente_nombre" name="cliente_nombre">
+                            </div>
+                            <div class="mb-3 border-start border-4 border-warning ps-3 py-2">
+                                <label for="fecha_promesa" class="form-label fw-bold">Fecha promesa de pago</label>
+                                <input type="date" class="form-control" id="fecha_promesa" name="fecha_promesa">
+                            </div>
+                            <div class="mb-3 border-start border-4 border-warning ps-3 py-2">
+                                <label for="notas_adicionales" class="form-label fw-bold">Notas adicionales</label>
+                                <textarea class="form-control" id="notas_adicionales" name="notas_adicionales" rows="2"></textarea>
+                            </div>
+                        </div>
+                        
                         <div class="form-check mb-3">
                             <input class="form-check-input" type="checkbox" id="imprimir_recibo" name="imprimir_recibo" checked>
                             <label class="form-check-label" for="imprimir_recibo">
@@ -110,30 +135,67 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Manejo de métodos de pago
+    console.log("DOM cargado - Iniciando script de pago");
+    
+    // Verificar los elementos del DOM
     const metodoPago = document.querySelectorAll('input[name="metodo_pago"]');
     const efectivoDetalles = document.getElementById('efectivo-detalles');
+    const pendienteDetalles = document.getElementById('pendiente-detalles');
     
+    console.log("¿Elemento 'efectivo-detalles' encontrado?", efectivoDetalles ? "Sí" : "No");
+    console.log("¿Elemento 'pendiente-detalles' encontrado?", pendienteDetalles ? "Sí" : "No");
+    
+    // Aplicar estilos directamente para asegurar visibilidad
+    if (pendienteDetalles) {
+        console.log("Estado inicial de pendiente-detalles:", pendienteDetalles.className);
+    }
+    
+    // Funcionalidad para mostrar los detalles según la opción seleccionada
+    function mostrarDetallesSegunMetodo() {
+        const metodoSeleccionado = document.querySelector('input[name="metodo_pago"]:checked');
+        console.log("Método seleccionado:", metodoSeleccionado ? metodoSeleccionado.value : "Ninguno");
+        
+        if (!metodoSeleccionado) return;
+        
+        // Ocultar todos los detalles primero
+        if (efectivoDetalles) efectivoDetalles.style.display = 'none';
+        if (pendienteDetalles) pendienteDetalles.style.display = 'none';
+        
+        // Mostrar los detalles correspondientes según la opción seleccionada
+        if (metodoSeleccionado.value === 'efectivo' && efectivoDetalles) {
+            efectivoDetalles.style.display = 'block';
+            console.log("Mostrando detalles de efectivo");
+        } else if (metodoSeleccionado.value === 'pendiente' && pendienteDetalles) {
+            pendienteDetalles.style.display = 'block';
+            console.log("Mostrando detalles de pendiente");
+        }
+    }
+    
+    // Ejecutar al cargar la página
+    mostrarDetallesSegunMetodo();
+    
+    // Evento change para los radio buttons
     metodoPago.forEach(function(radio) {
         radio.addEventListener('change', function() {
-            if (this.value === 'tarjeta') {
-                efectivoDetalles.classList.add('d-none');
-            } else {
-                efectivoDetalles.classList.remove('d-none');
-            }
+            console.log("Cambio detectado a:", this.value);
+            mostrarDetallesSegunMetodo();
         });
     });
     
     // Cálculo del cambio en efectivo
     const montoRecibido = document.getElementById('monto_recibido');
     const cambio = document.getElementById('cambio');
-    const totalPedido = {{ total_activo|default:0 }};
     
-    montoRecibido.addEventListener('input', function() {
-        const recibido = parseFloat(this.value) || 0;
-        const cambioCalculado = recibido - totalPedido;
-        cambio.value = cambioCalculado > 0 ? cambioCalculado.toFixed(2) : '0.00';
-    });
+    // Obtener el valor total del pedido usando un elemento del DOM para evitar problemas con templates
+    const totalPedido = parseFloat(document.querySelector('tfoot th:last-child').textContent.replace('$', '').trim()) || 0;
+    
+    if (montoRecibido && cambio) {
+        montoRecibido.addEventListener('input', function() {
+            const recibido = parseFloat(this.value) || 0;
+            const cambioCalculado = recibido - totalPedido;
+            cambio.value = cambioCalculado > 0 ? cambioCalculado.toFixed(2) : '0.00';
+        });
+    }
 });
 </script>
 {% endblock %}

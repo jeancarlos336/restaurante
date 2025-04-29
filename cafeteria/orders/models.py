@@ -1,4 +1,5 @@
 from django.db import models
+from django.urls import reverse
 
 # orders/models.py
 class Mesa(models.Model):
@@ -42,6 +43,7 @@ class Pedido(models.Model):
     ESTADO_PAGO = [
         ('pendiente', 'Pendiente'),
         ('pagado', 'Pagado'),
+        ('impago','Impago'),
         ('cancelado', 'Cancelado')
     ]
    
@@ -121,6 +123,7 @@ class DetallePedido(models.Model):
 class Pago(models.Model):
     METODOS_PAGO = (
         ('efectivo', 'Efectivo'),
+        ('pendiente','Pendiente'),
         ('tarjeta', 'Tarjeta de crédito/débito'),
     )
     
@@ -134,3 +137,22 @@ class Pago(models.Model):
     
     def __str__(self):
         return f"Pago {self.id} - Pedido {self.pedido.id}"
+    
+#--------------------------------
+
+# Asumo que ya tienes estos modelos existentes y solo estoy añadiendo el nuevo
+
+class PagoPendiente(models.Model):
+    pago = models.OneToOneField('Pago', on_delete=models.CASCADE, related_name='pendiente_info')
+    cliente_nombre = models.CharField(max_length=255)
+    fecha_promesa = models.DateField()
+    esta_pagado = models.BooleanField(default=False)
+    fecha_pago_real = models.DateField(null=True, blank=True)
+    notas_adicionales = models.TextField(blank=True, null=True)
+    
+    def __str__(self):
+        return f"Pendiente: {self.cliente_nombre} - ${self.pago.monto}"
+    
+    def get_absolute_url(self):
+        return reverse('orders:pagos_pendientes')
+

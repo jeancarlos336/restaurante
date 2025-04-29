@@ -141,37 +141,47 @@
                         >
                             <h4 class="mb-3">{{ categoria.nombre }}</h4>
                             <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3">
+                                <!-- Modificación de la tarjeta de producto en el template -->
                                 {% for producto in productos_por_categoria|get_item:categoria %}
-                                    <div class="col">
-                                        <div class="card producto-card">
-                                            <div class="card-body d-flex flex-column">
-                                                <h5 class="card-title">{{ producto.nombre }}</h5>
-                                                <p class="card-text text-muted mb-3">${{ producto.precio|floatformat:0 }}</p>
-                                                <form method="post" action="{% url 'orders:tomar_pedido' mesa.id %}" class="mt-auto">
-                                                    {% csrf_token %}
-                                                    <input type="hidden" name="action" value="add_producto">
-                                                    <input type="hidden" name="producto_id" value="{{ producto.id }}">
-                                                    <input type="hidden" name="categoria_activa" value="{{ categoria.id }}">
-                                                    <div class="input-group">
-                                                        <input 
-                                                            type="number" 
-                                                            name="cantidad" 
-                                                            value="1" 
-                                                            min="1" 
-                                                            class="form-control"
-                                                        >
-                                                        <button 
-                                                            type="submit" 
-                                                            class="btn btn-success"
-                                                        >
-                                                            <i class="fas fa-plus me-1"></i>
-                                                            <span class="d-none d-sm-inline">Agregar</span>
-                                                        </button>
-                                                    </div>
-                                                </form>
-                                            </div>
+                                <div class="col">
+                                    <div class="card producto-card">
+                                        <div class="card-body d-flex flex-column">
+                                            <h5 class="card-title">{{ producto.nombre }}</h5>
+                                            <p class="card-text text-muted mb-3">${{ producto.precio|floatformat:0 }}</p>
+                                            <form method="post" action="{% url 'orders:tomar_pedido' mesa.id %}" class="mt-auto">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="add_producto">
+                                                <input type="hidden" name="producto_id" value="{{ producto.id }}">
+                                                <input type="hidden" name="categoria_activa" value="{{ categoria.id }}">
+                                                <div class="input-group mb-2">
+                                                    <input 
+                                                        type="number" 
+                                                        name="cantidad" 
+                                                        value="1" 
+                                                        min="1" 
+                                                        class="form-control"
+                                                    >
+                                                </div>
+                                                <!-- Campo para notas -->
+                                                <div class="mb-2">
+                                                    <textarea 
+                                                        name="notas" 
+                                                        class="form-control form-control-sm" 
+                                                        placeholder="Notas especiales (ej: sin palta, sin mayonesa)"
+                                                        rows="2"
+                                                    ></textarea>
+                                                </div>
+                                                <button 
+                                                    type="submit" 
+                                                    class="btn btn-success w-100"
+                                                >
+                                                    <i class="fas fa-plus me-1"></i>
+                                                    <span>Agregar</span>
+                                                </button>
+                                            </form>
                                         </div>
                                     </div>
+                                </div>
                                 {% endfor %}
                             </div>
                         </div>
@@ -189,37 +199,53 @@
                     </h3>
                 </div>
                 <div class="card-body">
+                    <!-- Modificación en la sección de detalles del pedido -->
                     {% if pedido_existente %}
-                        <div class="list-group mb-3">
-                            {% for detalle in pedido_existente.detalles.all %}
-                                <div class="list-group-item d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <span class="fw-medium">{{ detalle.producto.nombre }}</span>
-                                        <span class="badge bg-secondary rounded-pill ms-1">{{ detalle.cantidad }}</span>
-                                        <button 
-                                            class="btn btn-sm btn-outline-danger eliminar-producto"
-                                            data-detalle-id="{{ detalle.id }}"
-                                            title="Eliminar"
-                                        >
-                                            <i class="fas fa-times"></i>
-                                        </button>
-                                    </div>
-                                    <span class="badge bg-primary rounded-pill">${{ detalle.subtotal|floatformat:0 }}</span>
+                    <div class="list-group mb-3">
+                        
+                        <!-- Añadir botón de edición de notas a cada ítem -->
+                        {% for detalle in pedido_existente.detalles.all %}
+                        <div class="list-group-item d-flex flex-column">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="fw-medium">{{ detalle.producto.nombre }}</span>
+                                    <span class="badge bg-secondary rounded-pill ms-1">{{ detalle.cantidad }}</span>
+                                    <button 
+                                        class="btn btn-sm btn-outline-danger eliminar-producto"
+                                        data-detalle-id="{{ detalle.id }}"
+                                        title="Eliminar"
+                                    >
+                                        <i class="fas fa-times"></i>
+                                    </button>
                                 </div>
-                            {% endfor %} 
+                                <span class="badge bg-primary rounded-pill">${{ detalle.subtotal|floatformat:0 }}</span>
+                            </div>
+                            <div class="mt-1">
+                                <div class="input-group input-group-sm">
+                                    <input type="text" class="form-control form-control-sm nota-input" 
+                                        value="{{ detalle.notas }}" placeholder="Agregar nota especial"
+                                        data-detalle-id="{{ detalle.id }}">
+                                    <button class="btn btn-outline-secondary guardar-nota btn-sm" 
+                                        data-detalle-id="{{ detalle.id }}">
+                                        <i class="fas fa-save"></i>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                        <div class="d-flex justify-content-between mb-3 p-2 bg-light rounded">
-                            <strong class="fs-5">Total</strong>
-                            <span class="h4 mb-0">${{ total_pedido|floatformat:0 }}</span>
-                        </div>
-                        <a href="{% url 'users:dashboard' %}" class="btn btn-primary w-100 btn-lg">
-                            <i class="fas fa-check-circle me-2"></i>Confirmar Pedido
-                        </a>
+                        {% endfor %}
+                    </div>
+                    <div class="d-flex justify-content-between mb-3 p-2 bg-light rounded">
+                        <strong class="fs-5">Total</strong>
+                        <span class="h4 mb-0">${{ total_pedido|floatformat:0 }}</span>
+                    </div>
+                    <a href="{% url 'users:dashboard' %}" class="btn btn-primary w-100 btn-lg">
+                        <i class="fas fa-check-circle me-2"></i>Confirmar Pedido
+                    </a>
                     {% else %}
-                        <div class="text-center py-5">
-                            <i class="fas fa-shopping-cart mb-3" style="font-size: 2rem; color: #ccc;"></i>
-                            <p class="text-muted">No hay productos en el pedido</p>
-                        </div>
+                    <div class="text-center py-5">
+                        <i class="fas fa-shopping-cart mb-3" style="font-size: 2rem; color: #ccc;"></i>
+                        <p class="text-muted">No hay productos en el pedido</p>
+                    </div>
                     {% endif %}
                 </div>
             </div>
@@ -230,56 +256,90 @@
 
 {% block extra_js %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Guardar la categoría seleccionada en localStorage
-    document.querySelectorAll('.categoria-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const categoriaId = this.dataset.categoria;
-            localStorage.setItem('categoriaActiva', categoriaId);
-            
-            // Ocultar todos los productos
-            document.querySelectorAll('.categoria-productos').forEach(el => {
-                el.style.display = 'none';
+    document.addEventListener('DOMContentLoaded', function() {
+        // Guardar la categoría seleccionada en localStorage
+        document.querySelectorAll('.categoria-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const categoriaId = this.dataset.categoria;
+                localStorage.setItem('categoriaActiva', categoriaId);
+               
+                // Ocultar todos los productos
+                document.querySelectorAll('.categoria-productos').forEach(el => {
+                    el.style.display = 'none';
+                });
+    
+                // Desactivar botones
+                document.querySelectorAll('.categoria-btn').forEach(el => {
+                    el.classList.remove('active');
+                });
+    
+                // Mostrar productos de la categoría seleccionada
+                const productos = document.querySelector(`.categoria-productos[data-categoria="${categoriaId}"]`);
+                if (productos) {
+                    productos.style.display = 'block';
+                   
+                    // Scroll suave hasta la sección de productos
+                    productos.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+    
+                // Activar botón actual
+                this.classList.add('active');
             });
-
-            // Desactivar botones
-            document.querySelectorAll('.categoria-btn').forEach(el => {
-                el.classList.remove('active');
-            });
-
-            // Mostrar productos de la categoría seleccionada
-            const productos = document.querySelector(`.categoria-productos[data-categoria="${categoriaId}"]`);
-            if (productos) {
-                productos.style.display = 'block';
-                
-                // Scroll suave hasta la sección de productos
-                productos.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-
-            // Activar botón actual
-            this.classList.add('active');
         });
-    });
-
-    // Al cargar la página, verificar si hay una categoría activa en localStorage
-    const categoriaActiva = localStorage.getItem('categoriaActiva');
-    if (categoriaActiva) {
-        const btnActivo = document.querySelector(`.categoria-btn[data-categoria="${categoriaActiva}"]`);
-        if (btnActivo) {
-            btnActivo.click(); // Simular click para activar la categoría
+    
+        // Al cargar la página, verificar si hay una categoría activa en localStorage
+        const categoriaActiva = localStorage.getItem('categoriaActiva');
+        if (categoriaActiva) {
+            const btnActivo = document.querySelector(`.categoria-btn[data-categoria="${categoriaActiva}"]`);
+            if (btnActivo) {
+                btnActivo.click(); // Simular click para activar la categoría
+            }
         }
-    }
-
-    // Mejor manejo para eliminar productos con confirmación mediante toast
-    document.addEventListener('click', function(e) {
-        const eliminarBtn = e.target.closest('.eliminar-producto');
-        if (eliminarBtn) {
-            e.preventDefault();
-            const detalleId = eliminarBtn.dataset.detalleId;
-            
-            if (confirm('¿Estás seguro de que deseas eliminar este producto del pedido?')) {
+    
+        // Mejor manejo para eliminar productos con confirmación mediante toast
+        document.addEventListener('click', function(e) {
+            const eliminarBtn = e.target.closest('.eliminar-producto');
+            if (eliminarBtn) {
+                e.preventDefault();
+                const detalleId = eliminarBtn.dataset.detalleId;
+               
+                if (confirm('¿Estás seguro de que deseas eliminar este producto del pedido?')) {
+                    // Guardar categoría activa antes de enviar
+                    const categoriaActiva = localStorage.getItem('categoriaActiva') || document.querySelector('.categoria-btn.active')?.dataset.categoria;
+                   
+                    fetch('', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                        },
+                        body: `action=remove_producto&detalle_id=${detalleId}&categoria_activa=${categoriaActiva}`
+                    })
+                    .then(response => {
+                        if (response.redirected) {
+                            window.location.href = response.url;
+                        } else if (!response.ok) {
+                            throw new Error('Error en la respuesta del servidor');
+                        }
+                        return response.json();
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Ocurrió un error al eliminar el producto');
+                    });
+                }
+            }
+        });
+       
+        // Guardar notas al hacer clic en el botón
+        document.querySelectorAll('.guardar-nota').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const detalleId = this.dataset.detalleId;
+                const nota = document.querySelector(`.nota-input[data-detalle-id="${detalleId}"]`).value;
+                
                 // Guardar categoría activa antes de enviar
-                const categoriaActiva = localStorage.getItem('categoriaActiva') || document.querySelector('.categoria-btn.active')?.dataset.categoria;
+                const categoriaActiva = localStorage.getItem('categoriaActiva') || 
+                                      document.querySelector('.categoria-btn.active')?.dataset.categoria;
                 
                 fetch('', {
                     method: 'POST',
@@ -287,34 +347,35 @@ document.addEventListener('DOMContentLoaded', function() {
                         'Content-Type': 'application/x-www-form-urlencoded',
                         'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
                     },
-                    body: `action=remove_producto&detalle_id=${detalleId}&categoria_activa=${categoriaActiva}`
+                    body: `action=update_nota&detalle_id=${detalleId}&nota=${encodeURIComponent(nota)}&categoria_activa=${categoriaActiva}`
                 })
                 .then(response => {
-                    if (response.redirected) {
+                    if (response.ok) {
+                        // Mostrar notificación de éxito
+                        alert('Nota guardada correctamente');
+                    } else if (response.redirected) {
                         window.location.href = response.url;
-                    } else if (!response.ok) {
+                    } else {
                         throw new Error('Error en la respuesta del servidor');
                     }
-                    return response.json();
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    alert('Ocurrió un error al eliminar el producto');
+                    alert('Ocurrió un error al guardar la nota');
                 });
+            });
+        });
+    
+        // Mejorar experiencia móvil: hacer scroll horizontal en categorías
+        const categoriasWrapper = document.querySelector('.categorias-wrapper');
+        if (categoriasWrapper && window.innerWidth < 768) {
+            const activeBtn = document.querySelector('.categoria-btn.active');
+            if (activeBtn) {
+                setTimeout(() => {
+                    activeBtn.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+                }, 300);
             }
         }
     });
-    
-    // Mejorar experiencia móvil: hacer scroll horizontal en categorías
-    const categoriasWrapper = document.querySelector('.categorias-wrapper');
-    if (categoriasWrapper && window.innerWidth < 768) {
-        const activeBtn = document.querySelector('.categoria-btn.active');
-        if (activeBtn) {
-            setTimeout(() => {
-                activeBtn.scrollIntoView({ behavior: 'smooth', inline: 'center' });
-            }, 300);
-        }
-    }
-});
 </script>
 {% endblock %}
