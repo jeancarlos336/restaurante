@@ -67,7 +67,7 @@
                             </label>
                         </div>
                         
-                        <div id="efectivo-detalles">
+                        <div id="efectivo-detalles" class="payment-details">
                             <div class="mb-3">
                                 <label for="monto_recibido" class="form-label">Monto recibido</label>
                                 <div class="input-group">
@@ -99,8 +99,7 @@
                             </label>
                         </div>
 
-                        <!-- Usamos style="display:none;" en lugar de d-none para asegurar compatibilidad -->
-                        <div id="pendiente-detalles" style="display:none;">
+                        <div id="pendiente-detalles" class="payment-details" style="display:none;">
                             <div class="mb-3 border-start border-4 border-warning ps-3 py-2">
                                 <label for="cliente_nombre" class="form-label fw-bold">Nombre del cliente</label>
                                 <input type="text" class="form-control" id="cliente_nombre" name="cliente_nombre">
@@ -124,7 +123,7 @@
                         
                         <div class="d-flex justify-content-between mt-4">
                             <a href="{% url 'orders:todos_los_pedidos' %}" class="btn btn-secondary">Cancelar</a>
-                            <button type="submit" class="btn btn-success">Completar pago</button>
+                            <button type="submit" class="btn btn-success" id="btn-completar-pago">Completar pago</button>
                         </div>
                     </form>
                 </div>
@@ -135,40 +134,52 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    console.log("DOM cargado - Iniciando script de pago");
-    
     // Verificar los elementos del DOM
     const metodoPago = document.querySelectorAll('input[name="metodo_pago"]');
     const efectivoDetalles = document.getElementById('efectivo-detalles');
     const pendienteDetalles = document.getElementById('pendiente-detalles');
+    const montoRecibido = document.getElementById('monto_recibido');
+    const cambio = document.getElementById('cambio');
+    const btnCompletarPago = document.getElementById('btn-completar-pago');
     
-    console.log("¿Elemento 'efectivo-detalles' encontrado?", efectivoDetalles ? "Sí" : "No");
-    console.log("¿Elemento 'pendiente-detalles' encontrado?", pendienteDetalles ? "Sí" : "No");
+    // Obtener el valor total del pedido
+    const totalPedido = parseFloat(document.querySelector('tfoot th:last-child').textContent.replace('$', '').trim()) || 0;
     
-    // Aplicar estilos directamente para asegurar visibilidad
-    if (pendienteDetalles) {
-        console.log("Estado inicial de pendiente-detalles:", pendienteDetalles.className);
-    }
-    
-    // Funcionalidad para mostrar los detalles según la opción seleccionada
+    // Función para mostrar detalles según el método seleccionado
     function mostrarDetallesSegunMetodo() {
         const metodoSeleccionado = document.querySelector('input[name="metodo_pago"]:checked');
-        console.log("Método seleccionado:", metodoSeleccionado ? metodoSeleccionado.value : "Ninguno");
-        
-        if (!metodoSeleccionado) return;
         
         // Ocultar todos los detalles primero
-        if (efectivoDetalles) efectivoDetalles.style.display = 'none';
-        if (pendienteDetalles) pendienteDetalles.style.display = 'none';
+        document.querySelectorAll('.payment-details').forEach(function(el) {
+            el.style.display = 'none';
+        });
         
         // Mostrar los detalles correspondientes según la opción seleccionada
         if (metodoSeleccionado.value === 'efectivo' && efectivoDetalles) {
             efectivoDetalles.style.display = 'block';
-            console.log("Mostrando detalles de efectivo");
+            // Asegurarse de que el campo monto_recibido sea requerido para efectivo
+            if (montoRecibido) {
+                montoRecibido.setAttribute('required', 'required');
+            }
         } else if (metodoSeleccionado.value === 'pendiente' && pendienteDetalles) {
             pendienteDetalles.style.display = 'block';
-            console.log("Mostrando detalles de pendiente");
+            // Quitar required del monto_recibido si no es efectivo
+            if (montoRecibido) {
+                montoRecibido.removeAttribute('required');
+            }
+        } else {
+            // Para tarjeta u otros métodos, no se necesita monto_recibido
+            if (montoRecibido) {
+                montoRecibido.removeAttribute('required');
+            }
         }
+        
+        // Ajustes para dispositivos móviles - asegurar que la página se desplaza para mostrar los nuevos campos
+        setTimeout(function() {
+            if (metodoSeleccionado.value === 'pendiente') {
+                pendienteDetalles.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }, 100);
     }
     
     // Ejecutar al cargar la página
@@ -176,19 +187,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Evento change para los radio buttons
     metodoPago.forEach(function(radio) {
-        radio.addEventListener('change', function() {
-            console.log("Cambio detectado a:", this.value);
-            mostrarDetallesSegunMetodo();
-        });
+        radio.addEventListener('change', mostrarDetallesSegunMetodo);
     });
     
     // Cálculo del cambio en efectivo
-    const montoRecibido = document.getElementById('monto_recibido');
-    const cambio = document.getElementById('cambio');
-    
-    // Obtener el valor total del pedido usando un elemento del DOM para evitar problemas con templates
-    const totalPedido = parseFloat(document.querySelector('tfoot th:last-child').textContent.replace('$', '').trim()) || 0;
-    
     if (montoRecibido && cambio) {
         montoRecibido.addEventListener('input', function() {
             const recibido = parseFloat(this.value) || 0;
@@ -196,6 +198,72 @@ document.addEventListener('DOMContentLoaded', function() {
             cambio.value = cambioCalculado > 0 ? cambioCalculado.toFixed(2) : '0.00';
         });
     }
+    
+    // Validar formulario antes de enviar
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const metodoSeleccionado = document.querySelector('input[name="metodo_pago"]:checked').value;
+        
+        // Validación específica para método pendiente
+        if (metodoSeleccionado === 'pendiente') {
+            const clienteNombre = document.getElementById('cliente_nombre').value.trim();
+            const fechaPromesa = document.getElementById('fecha_promesa').value;
+            
+            if (!clienteNombre || !fechaPromesa) {
+                e.preventDefault(); // Detener el envío
+                alert('Para pagos pendientes, debe ingresar el nombre del cliente y la fecha de promesa de pago.');
+                return false;
+            }
+        }
+        
+        return true;
+    });
+    
+    // Ajuste para dispositivos móviles - fix para eventos táctiles
+    if ('ontouchstart' in window) {
+        // Fix adicional para dispositivos táctiles
+        btnCompletarPago.addEventListener('touchstart', function() {
+            // Este evento asegura que el botón responda en dispositivos táctiles
+            this.classList.add('active');
+        });
+        
+        btnCompletarPago.addEventListener('touchend', function() {
+            this.classList.remove('active');
+        });
+    }
 });
 </script>
+
+<style>
+/* Estilos para mejorar la interacción en dispositivos móviles */
+@media (max-width: 767px) {
+    .form-check {
+        padding: 10px;
+        margin-bottom: 10px;
+        border-radius: 5px;
+        background-color: #f8f9fa;
+    }
+    
+    .form-check-input {
+        width: 20px;
+        height: 20px;
+    }
+    
+    .form-check-label {
+        padding-left: 5px;
+        font-size: 16px;
+    }
+    
+    #btn-completar-pago {
+        padding: 12px 24px;
+        font-size: 18px;
+        width: 100%;
+        margin-top: 10px;
+    }
+    
+    #btn-completar-pago.active {
+        transform: translateY(2px);
+        background-color: #198754;
+    }
+}
+</style>
 {% endblock %}

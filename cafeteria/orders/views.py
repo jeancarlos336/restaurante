@@ -16,6 +16,7 @@ from datetime import datetime
 from django.db.models import Q,Sum
 import json
 from django.utils import timezone
+from django.core.paginator import Paginator
 
 
 
@@ -678,19 +679,37 @@ def completar_pago(request, pedido_id):
 @login_required
 def listar_pagos_pendientes(request):
     """
-    Muestra todos los pagos pendientes
+    Muestra todos los pagos pendientes con paginación y búsqueda por cliente
     """
-    # Filtrar solo los pagos pendientes que no han sido pagados
-    pagos_pendientes = PagoPendiente.objects.filter(esta_pagado=False).order_by('fecha_promesa')
+    # Obtener el parámetro de búsqueda
+    cliente_busqueda = request.GET.get('cliente', '')
     
-    # Calcular el total pendiente
+    # Filtrar solo los pagos pendientes que no han sido pagados
+    pagos_pendientes = PagoPendiente.objects.filter(esta_pagado=False)
+    
+    # Aplicar filtro por cliente si se ha proporcionado una búsqueda
+    if cliente_busqueda:
+        pagos_pendientes = pagos_pendientes.filter(cliente_nombre__icontains=cliente_busqueda)
+    
+    # Ordenar por fecha de promesa
+    pagos_pendientes = pagos_pendientes.order_by('fecha_promesa')
+    
+    # Calcular el total pendiente de los pagos filtrados
     total_pendiente = pagos_pendientes.aggregate(total=Sum('pago__monto'))['total'] or 0
     
+    # Configurar la paginación
+    paginator = Paginator(pagos_pendientes, 10)  # 10 pagos por página
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
     return render(request, 'orders/pedidos/pagos_pendientes.html', {
-        'pagos_pendientes': pagos_pendientes,
-        'total_pendiente': total_pendiente
+        'pagos_pendientes': page_obj,
+        'total_pendiente': total_pendiente,
+        'cliente_busqueda': cliente_busqueda,
+        'paginator': paginator,
+        'page_obj': page_obj,
     })
-
+    
 @login_required
 def marcar_pago_como_pagado(request, pago_pendiente_id):
     """
